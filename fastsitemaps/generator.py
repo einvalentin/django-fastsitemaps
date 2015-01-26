@@ -7,7 +7,11 @@ def sitemap_generator(request, maps, page, current_site):
     output = StringIO()
     xml = SimplerXMLGenerator(output, settings.DEFAULT_CHARSET)
     xml.startDocument()
-    xml.startElement('urlset', {'xmlns':'http://www.sitemaps.org/schemas/sitemap/0.9'})
+    ns = {
+        'xmlns':'http://www.sitemaps.org/schemas/sitemap/0.9',
+        'xmlns:image':"http://www.google.com/schemas/sitemap-image/1.1",
+    }
+    xml.startElement('urlset', ns)
     yield output.getvalue()
     pos = output.tell()
     for site in maps:
@@ -36,6 +40,22 @@ def sitemap_generator(request, maps, page, current_site):
                     xml.addQuickElement('priority', url['priority'])
             except KeyError:
                 pass
+
+            try:
+                # This will generate image links, if the item has an 'image' attribute
+                img = url['item'].image
+                xml.startElement('image:image', {})
+                xml.addQuickElement('image:loc', request.build_absolute_uri(img.url))
+                try:
+                    # if it also has name and description attributes, it will add those
+                    # to the image sitemaps
+                    xml.addQuickElement('image:title', url['item'].name)
+                    xml.addQuickElement('image:caption', url['item'].description)
+                except: pass
+                xml.endElement('image:image')
+            except:
+                pass
+
             xml.endElement('url')
             output.seek(pos)
             yield output.read()
